@@ -1,0 +1,55 @@
+%% Initialize and Set Up EEGLAB
+% Add EEGLAB to your MATLAB path
+addpath('/home/soumyab/work/nexstem/eeg/eegCodes/eeglab'); % Replace with the correct path to EEGLAB
+dataset_name = 'eyesclosed';
+% Start EEGLAB
+eeglab;
+
+%% Load EEG Dataset
+% Load your EEG data file (adjust the file format as needed)
+% The dataset should ideally be in `.set` format (EEGLAB's native format)
+data_path = (['/home/soumyab/work/nexstem/eeg/preprocessedData/' dataset_name '.mat']); % Replace with your EEG file path
+EEG = pop_loadset(data_path);
+
+% Display the EEG dataset structure
+disp(EEG);
+
+%% Preprocessing: Filter the Data
+% Band-pass filter to remove low-frequency drift and high-frequency noise
+% Here, we filter between 1 Hz and 50 Hz
+EEG = pop_eegfiltnew(EEG, 'locutoff', 1, 'hicutoff', 50);
+
+%% Preprocessing: Re-reference the Data
+% Re-reference the EEG data to the average of all channels
+EEG = pop_reref(EEG, []);
+
+%% Run ICA
+% Perform ICA decomposition to identify independent components
+EEG = pop_runica(EEG, 'extended', 1);
+
+% Save the ICA decomposition results
+pop_saveset(EEG, 'filename', [dataset '_ica_decomposed.set'], 'filepath', '/path_to_save/');
+
+%% Visualize ICA Components
+% Use EEGLAB's GUI to visualize ICA components and select artifacts
+pop_selectcomps(EEG, [1:20]); % View the first 20 components
+
+% In the GUI, you can select components corresponding to eye-blink or muscle artifacts.
+
+%% Remove Artifact Components
+% Remove selected components based on your manual inspection
+artifact_components = [1, 3]; % Replace with the components you identify as artifacts
+EEG = pop_subcomp(EEG, artifact_components, 0);
+
+% Save the cleaned EEG dataset
+pop_saveset(EEG, 'dataset_name', 'cleaned_eeg.set', 'filepath', '/path_to_save/');
+
+%% Visualize Cleaned Data
+% Plot the EEG data after artifact removal
+pop_eegplot(EEG, 1, 1, 1);
+
+%% Export Data for Further Analysis
+% Export the cleaned EEG data for further analysis or processing
+cleaned_data = EEG.data; % The EEG data matrix (channels x time points)
+fs = EEG.srate;          % Sampling frequency
+save('/path_to_save/cleaned_data.mat', 'cleaned_data', 'fs');
